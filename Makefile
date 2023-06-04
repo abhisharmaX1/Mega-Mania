@@ -1,4 +1,4 @@
-all: vec2 entity entityManager action physics animation assets scene scene_menu scene_play game_engine compile link run
+all: vec2 entity entityManager action physics animation assets scene scene_menu scene_play game_engine compile link
 
 vec2:
 	g++ -Isrc/include -c Vec2.cpp
