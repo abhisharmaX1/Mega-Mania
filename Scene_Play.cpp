@@ -103,7 +103,7 @@ void Scene_Play::spawnPlayer()
     m_player->addComponent<CBoundingBox>(Vec2(m_playerConfig.CX, m_playerConfig.CY));
     m_player->addComponent<CGravity>(m_playerConfig.GRAVITY);
     m_player->addComponent<CInput>();
-    m_player->addComponent<CState>();
+    m_player->addComponent<CState>("AIR");
     // TODO: be sure to add the remaining components to the player
 }
 
@@ -124,8 +124,8 @@ void Scene_Play::update()
     
     // TODO: Implement pause functionality
     m_currentFrame++;
-    sCollision();
     sMovement();
+    sCollision();
     sLifespan();
     sAnimation();
     sRender();
@@ -150,11 +150,13 @@ void Scene_Play::sMovement()
     }
     if (m_player->getComponent<CInput>().left) {
         playerVelocity.x = -m_playerConfig.SPEED;
+        m_player->getComponent<CTransform>().scale.x = -1.0;
     }
     if (m_player->getComponent<CInput>().right) {
         playerVelocity.x = m_playerConfig.SPEED;
+        m_player->getComponent<CTransform>().scale.x = 1.0;
     }   
-
+    
     playerVelocity.y += m_player->getComponent<CGravity>().gravity;
     if (m_player->getComponent<CState>().state == "GROUND") {
         playerVelocity.y = 0;
@@ -197,7 +199,7 @@ void Scene_Play::sLifespan()
 void Scene_Play::sCollision()
 {
     // TODO: REMEMBER: SFML's (0,0) position is on the TOP-LEFT corner
-    // T     his means jumping will have a negative y-component
+    //       This means jumping will have a negative y-component
     //       and gravity will have a positive y-component
     //       Also, something BELOW something else will have a y value GREATER than it
     //       Also, something ABOVE something else will have a y value LESS than it
@@ -224,8 +226,10 @@ void Scene_Play::sCollision()
     //       used by the Animation system
     for (auto t : m_entityManager.getEntities("tile")) {
         auto overlap = Physics::GetOverlap(m_player, t);
+        auto ppos = m_player->getComponent<CTransform>().pos;
+        auto tpos = t->getComponent<CTransform>().pos;
+        auto prevOverlap = Physics::GetPreviousOverlap(m_player, t);
         if (overlap.x > 0 && overlap.y > 0) {
-            auto prevOverlap = Physics::GetPreviousOverlap(m_player, t);
             if (prevOverlap.y > 0) { // for collisions on the sides
                 if (m_player->getComponent<CTransform>().pos.x > t->getComponent<CTransform>().pos.x) {
                     m_player->getComponent<CTransform>().pos.x += overlap.x;
@@ -236,7 +240,7 @@ void Scene_Play::sCollision()
             if (prevOverlap.x > 0) { // for vertical collisions
                 if (m_player->getComponent<CTransform>().pos.y > t->getComponent<CTransform>().pos.y) {
                     m_player->getComponent<CTransform>().pos.y += overlap.y;
-                    m_player->getComponent<CState>().state = "GROUND";
+                    m_player->getComponent<CState>().state = "GROUND"; // todo : when to switch to air
                     m_player->getComponent<CInput>().canJump = true;
                 } else {
                     m_player->getComponent<CTransform>().pos.y -= overlap.y;
@@ -245,6 +249,13 @@ void Scene_Play::sCollision()
             }
         }
     }
+
+    
+    
+
+    
+
+    
 
     // TODO: Check to see if the player has fallen down a hole (y > height())
     if (m_player->getComponent<CTransform>().pos.y < 0) {
@@ -310,7 +321,7 @@ void Scene_Play::onEnd()
 }
 
 void Scene_Play::sRender()
-{
+{   
     // color the background darker so you know that the game is paused
     if (!m_paused) { m_game->window().clear(sf::Color(100, 100, 255)); }
     else           { m_game->window().clear(sf::Color(50, 50, 150)); }
