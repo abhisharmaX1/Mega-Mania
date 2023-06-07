@@ -55,7 +55,9 @@ void Scene_Play::loadLevel(const std::string &filename)
             f >> type >> x >> y;
             auto e = m_entityManager.addEntity("tile");
             e->addComponent<CTransform>(Vec2(x, y));
-            e->addComponent<CAnimation>(m_game->assets().getAnimation(type), true);
+            bool repeat = true;
+            if (type == "Explosion" || type == "Coin") repeat = false;
+            e->addComponent<CAnimation>(m_game->assets().getAnimation(type), repeat);
             e->getComponent<CTransform>().prevPos = e->getComponent<CTransform>().pos;
             // add a bounding box, this will now show up if we press the 'C' Key
             e->addComponent<CBoundingBox>(m_game->assets().getAnimation(type).getSize());
@@ -99,12 +101,9 @@ void Scene_Play::spawnPlayer()
     m_player->addComponent<CAnimation>(m_game->assets().getAnimation("Stand"), true);
     m_player->addComponent<CTransform>(Vec2(m_playerConfig.X, m_playerConfig.Y));
     m_player->getComponent<CTransform>().prevPos = Vec2(m_playerConfig.X, m_playerConfig.Y);
-    // m_player->getComponent<CTransform>().velocity = Vec2(m_playerConfig.SPEED, m_playerConfig.JUMP);
     m_player->addComponent<CBoundingBox>(Vec2(m_playerConfig.CX, m_playerConfig.CY));
     m_player->addComponent<CGravity>(m_playerConfig.GRAVITY);
     m_player->addComponent<CInput>().canJump = false;
-    m_player->addComponent<CState>("AIR");
-    // TODO: be sure to add the remaining components to the player
 
 
     // helps with state management(ground or air)
@@ -121,7 +120,7 @@ void Scene_Play::spawnBullet(std::shared_ptr<Entity> entity)
     bullet->addComponent<CAnimation>(m_game->assets().getAnimation(m_playerConfig.WEAPON), true);
     bullet->addComponent<CTransform>(entity->getComponent<CTransform>().pos);
     bullet->addComponent<CBoundingBox>(m_game->assets().getAnimation(m_playerConfig.WEAPON).getSize());
-    bullet->getComponent<CTransform>().velocity = {3.0f, 0.0f};
+    bullet->getComponent<CTransform>().velocity = {(m_player->getComponent<CTransform>().scale.x * (m_playerConfig.SPEED)), 0.0f};
     bullet->addComponent<CLifespan>(90, m_currentFrame);
 }
 
@@ -145,15 +144,18 @@ void Scene_Play::sMovement()
     // TODO: Implement the maximum player speed in both X and Y directions
     // TODO: Setting an entity's scale.x to -1/1 will make it face to the left/right
 
-    Vec2 playerVelocity = {0, m_player->getComponent<CTransform>().velocity.y};
+    // movement of box that helps state management
+    auto ppos = m_player->getComponent<CTransform>().pos;
+    auto box = m_entityManager.getEntities("box")[0];
+    box->getComponent<CTransform>().pos = Vec2(ppos.x, ppos.y - 1);
+
+
+    Vec2 playerVelocity = {0.0f, m_player->getComponent<CTransform>().velocity.y};
 
     if (m_player->getComponent<CInput>().up && m_player->getComponent<CInput>().canJump) {
         playerVelocity.y = m_playerConfig.JUMP;
         m_player->getComponent<CInput>().canJump = false;
         m_player->getComponent<CState>().state = "AIR";
-    }
-    if (m_player->getComponent<CInput>().down) {
-        playerVelocity.y = -m_playerConfig.JUMP;
     }
     if (m_player->getComponent<CInput>().left) {
         playerVelocity.x = -m_playerConfig.SPEED;
@@ -162,7 +164,9 @@ void Scene_Play::sMovement()
     if (m_player->getComponent<CInput>().right) {
         playerVelocity.x = m_playerConfig.SPEED;
         m_player->getComponent<CTransform>().scale.x = 1.0;
-    }   
+    }
+    
+       
     
     playerVelocity.y += m_player->getComponent<CGravity>().gravity;
     if (m_player->getComponent<CState>().state == "GROUND") {
@@ -183,10 +187,6 @@ void Scene_Play::sMovement()
     m_player->getComponent<CTransform>().pos += playerVelocity;
     
     
-    // movement of the box that helps manage state
-    auto ppos = m_player->getComponent<CTransform>().pos;
-    auto box = m_entityManager.getEntities("box")[0];
-    box->getComponent<CTransform>().pos = Vec2(ppos.x, ppos.y - 1); 
 
 
     
@@ -271,7 +271,7 @@ void Scene_Play::sCollision()
         if (m_player) {
             auto ppos = m_player->getComponent<CTransform>().pos;
             auto box = m_entityManager.getEntities("box")[0];
-            box->getComponent<CTransform>().pos = Vec2(ppos.x, ppos.y - 1); 
+            // box->getComponent<CTransform>().pos = Vec2(ppos.x, ppos.y - 1); 
             auto overlap = Physics::GetOverlap(box, t);
             if (overlap.x > 0 && overlap.y > 0) {
                 m_player->getComponent<CState>().state = "GROUND";
@@ -314,7 +314,6 @@ void Scene_Play::sDoAction(const Action &action)
         }
         else if  (action.name() == "MOVE_LEFT") { m_player->getComponent<CInput>().left = true;}
         else if  (action.name() == "MOVE_RIGHT") { m_player->getComponent<CInput>().right = true;}
-        else if  (action.name() == "MOVE_DOWN") { m_player->getComponent<CInput>().down = true;}
         else if  (action.name() == "SHOOT" && m_player->getComponent<CInput>().canShoot) { 
             m_player->getComponent<CInput>().shoot = true;
             m_player->getComponent<CInput>().canShoot = false;
@@ -326,7 +325,6 @@ void Scene_Play::sDoAction(const Action &action)
         }
         else if  (action.name() == "MOVE_LEFT") { m_player->getComponent<CInput>().left = false;}
         else if  (action.name() == "MOVE_RIGHT") { m_player->getComponent<CInput>().right = false;}
-        else if  (action.name() == "MOVE_DOWN") { m_player->getComponent<CInput>().down = false;}
         else if  (action.name() == "SHOOT") { 
             m_player->getComponent<CInput>().shoot = false;
             m_player->getComponent<CInput>().canShoot = true;
@@ -336,11 +334,34 @@ void Scene_Play::sDoAction(const Action &action)
 
 void Scene_Play::sAnimation()
 {
-    // TODO: Complete the animation class code first
 
-    // TODO: set the animation of the player based on the CState Component
-    // TODO: for each entity with an animation, call entity->getComponent<CAnimation>().animation.update()
-    //       if the animation is not repeated, and it has ended, destroy the entity
+    // set the animation of the player based on the CState Component
+    auto state = m_player->getComponent<CState>().state;
+    auto animation = m_player->getComponent<CAnimation>().animation.getName();
+    if (state == "AIR") {
+        m_player->getComponent<CAnimation>().animation = m_game->assets().getAnimation("Air");
+    } else if (state == "GROUND" && m_player->getComponent<CTransform>().velocity.x == 0) {
+        m_player->getComponent<CAnimation>().animation = m_game->assets().getAnimation("Stand");
+    // only set the animation if it should change as it overwrites the previous animation 
+    // (and currentAnimationFrame values start from 0 again)
+    // it does not matter for others(the two above) cause they have 1 frame only
+    } else if (state == "GROUND" && animation != "Run") {
+        m_player->getComponent<CAnimation>().animation = m_game->assets().getAnimation("Run");
+    }
+
+
+    // for each entity with an animation, call entity->getComponent<CAnimation>().animation.update()
+    // if the animation is not repeated, and it has ended, destroy the entity
+    for (auto e : m_entityManager.getEntities()) {
+        if (e->hasComponent<CAnimation>()) {
+            e->getComponent<CAnimation>().animation.update();
+            if (!e->getComponent<CAnimation>().repeat && e->getComponent<CAnimation>().animation.hasEnded()) {
+                e->destroy();
+            }
+        }
+    }
+
+
 }
 
 

@@ -1,5 +1,6 @@
 #include "Animation.h"
 #include <cmath>
+#include <iostream>
 
 
 Animation::Animation()
@@ -34,11 +35,21 @@ void Animation::update()
     
     // TODO: 1) Calculate the correct frame of animation to play based on currentFrame and speed
     //       2) set the texture rectangle properly (see constructor for sample)
+    if (m_speed == 0) return;
+    int frame = (m_currentFrame / m_speed) % m_frameCount;
+    sf::IntRect rect = sf::IntRect(frame*(m_size.x), 0, m_size.x, m_size.y);
+    
+    m_sprite.setTextureRect(rect);
+
 }
 
 bool Animation::hasEnded() const
 {
     // TODO: detect when animation has ended (last frame was played) and return true
+    if (m_speed == 0) return false;
+    if (m_currentFrame >= m_frameCount * m_speed) {
+        return true;
+    }
     return false;
 }
 
