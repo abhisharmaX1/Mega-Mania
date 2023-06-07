@@ -102,9 +102,16 @@ void Scene_Play::spawnPlayer()
     // m_player->getComponent<CTransform>().velocity = Vec2(m_playerConfig.SPEED, m_playerConfig.JUMP);
     m_player->addComponent<CBoundingBox>(Vec2(m_playerConfig.CX, m_playerConfig.CY));
     m_player->addComponent<CGravity>(m_playerConfig.GRAVITY);
-    m_player->addComponent<CInput>();
+    m_player->addComponent<CInput>().canJump = false;
     m_player->addComponent<CState>("AIR");
     // TODO: be sure to add the remaining components to the player
+
+
+    // helps with state management(ground or air)
+    auto e = m_entityManager.addEntity("box");
+    e->addComponent<CTransform>(Vec2(m_playerConfig.X, m_playerConfig.Y - 1));
+    // e->getComponent<CTransform>().velocity = Vec2(eConfig.SPEED, eConfig.JUMP);
+    e->addComponent<CBoundingBox>(Vec2(m_playerConfig.CX, m_playerConfig.CY));
 }
 
 void Scene_Play::spawnBullet(std::shared_ptr<Entity> entity)
@@ -120,14 +127,14 @@ void Scene_Play::spawnBullet(std::shared_ptr<Entity> entity)
 
 void Scene_Play::update()
 {
-    m_entityManager.update();
-    
-    // TODO: Implement pause functionality
-    m_currentFrame++;
-    sMovement();
-    sCollision();
-    sLifespan();
-    sAnimation();
+    if (!m_paused) {
+        m_entityManager.update();
+        sMovement();
+        sCollision();
+        sLifespan();
+        m_currentFrame++;
+        sAnimation();
+    }
     sRender();
 }
 
@@ -173,8 +180,13 @@ void Scene_Play::sMovement()
     m_player->getComponent<CTransform>().prevPos = m_player->getComponent<CTransform>().pos; // save previous position
     
     m_player->getComponent<CTransform>().velocity = playerVelocity;
-    m_player->getComponent<CTransform>().pos += playerVelocity; 
-
+    m_player->getComponent<CTransform>().pos += playerVelocity;
+    
+    
+    // movement of the box that helps manage state
+    auto ppos = m_player->getComponent<CTransform>().pos;
+    auto box = m_entityManager.getEntities("box")[0];
+    box->getComponent<CTransform>().pos = Vec2(ppos.x, ppos.y - 1); 
 
 
     
@@ -248,6 +260,26 @@ void Scene_Play::sCollision()
                 }
             }
         }
+    }
+
+
+    // this is a hacky solution to manage player state (ground or air) but i can only think of this for now
+    // maybe later move the line that changes position to sMovement
+    m_player->getComponent<CState>().state = "AIR";
+    for (auto t : m_entityManager.getEntities("tile")) {
+
+        if (m_player) {
+            auto ppos = m_player->getComponent<CTransform>().pos;
+            auto box = m_entityManager.getEntities("box")[0];
+            box->getComponent<CTransform>().pos = Vec2(ppos.x, ppos.y - 1); 
+            auto overlap = Physics::GetOverlap(box, t);
+            if (overlap.x > 0 && overlap.y > 0) {
+                m_player->getComponent<CState>().state = "GROUND";
+                m_player->getComponent<CInput>().canJump = true;
+            }
+        }
+
+        
     }
 
     
@@ -356,7 +388,8 @@ void Scene_Play::sRender()
         for (auto e : m_entityManager.getEntities())
         {
             if (e->hasComponent<CBoundingBox>())
-            {
+            {   
+                if (e->tag() == "box") continue;
                 auto& box = e->getComponent<CBoundingBox>();
                 auto& transform = e->getComponent<CTransform>();
                 sf::RectangleShape rect;
