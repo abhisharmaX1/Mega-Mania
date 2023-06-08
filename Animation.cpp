@@ -30,13 +30,9 @@ Animation::Animation(const std::string& name, const sf::Texture& texture, size_t
 // animation loops when it reaches the end
 void Animation::update()
 {
-    // add the speed variable to the current frame
     m_currentFrame++;
-    
-    // TODO: 1) Calculate the correct frame of animation to play based on currentFrame and speed
-    //       2) set the texture rectangle properly (see constructor for sample)
     if (m_speed == 0) return;
-    int frame = (m_currentFrame / m_speed) % m_frameCount;
+    int frame = (m_currentFrame / m_speed) % m_frameCount; // safe code would check for 'divide by zero' error
     sf::IntRect rect = sf::IntRect(frame*(m_size.x), 0, m_size.x, m_size.y);
     
     m_sprite.setTextureRect(rect);

@@ -208,6 +208,19 @@ void Scene_Play::sLifespan()
     }
 }
 
+void Scene_Play::explosion(std::shared_ptr<Entity> e) {
+    auto expo = m_entityManager.addEntity("explosion");
+    expo->addComponent<CAnimation>(m_game->assets().getAnimation("Explosion"), false);
+    expo->addComponent<CTransform>(e->getComponent<CTransform>().pos);
+
+}
+
+void Scene_Play::spawnCoin(std::shared_ptr<Entity> e) {
+    auto coin = m_entityManager.addEntity("coin");
+    coin->addComponent<CTransform>(Vec2(e->getComponent<CTransform>().pos.x, e->getComponent<CTransform>().pos.y + 64));
+    coin->addComponent<CAnimation>(m_game->assets().getAnimation("Coin"), false);
+}
+
 void Scene_Play::sCollision()
 {
     // TODO: REMEMBER: SFML's (0,0) position is on the TOP-LEFT corner
@@ -225,6 +238,7 @@ void Scene_Play::sCollision()
             if (overlap.x > 0 && overlap.y > 0) {
                 b->destroy();
                 if (t->getComponent<CAnimation>().animation.getName() == "Brick") {
+                    explosion(t);
                     t->destroy();
                 }
             }
@@ -250,13 +264,20 @@ void Scene_Play::sCollision()
                 }
             }
             if (prevOverlap.x > 0) { // for vertical collisions
-                if (m_player->getComponent<CTransform>().pos.y > t->getComponent<CTransform>().pos.y) {
+                if (m_player->getComponent<CTransform>().pos.y > t->getComponent<CTransform>().pos.y) { // falling down
                     m_player->getComponent<CTransform>().pos.y += overlap.y;
                     m_player->getComponent<CState>().state = "GROUND"; // todo : when to switch to air
                     m_player->getComponent<CInput>().canJump = true;
-                } else {
+                } else { // going  up
                     m_player->getComponent<CTransform>().pos.y -= overlap.y;
                     m_player->getComponent<CTransform>().velocity.y = 0;
+                    if (t->getComponent<CAnimation>().animation.getName() == "Brick") {
+                        explosion(t);
+                        t->destroy();
+                    } else if (t->getComponent<CAnimation>().animation.getName() == "Question") {
+                        spawnCoin(t);
+                        t->getComponent<CAnimation>().animation = m_game->assets().getAnimation("Question2");
+                    }
                 }
             }
         }
