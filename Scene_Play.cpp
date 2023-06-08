@@ -120,7 +120,7 @@ void Scene_Play::spawnBullet(std::shared_ptr<Entity> entity)
     bullet->addComponent<CAnimation>(m_game->assets().getAnimation(m_playerConfig.WEAPON), true);
     bullet->addComponent<CTransform>(entity->getComponent<CTransform>().pos);
     bullet->addComponent<CBoundingBox>(m_game->assets().getAnimation(m_playerConfig.WEAPON).getSize());
-    bullet->getComponent<CTransform>().velocity = {(m_player->getComponent<CTransform>().scale.x * (m_playerConfig.SPEED)), 0.0f};
+    bullet->getComponent<CTransform>().velocity = {(m_player->getComponent<CTransform>().scale.x * (m_playerConfig.SPEED * 2)), 0.0f};
     bullet->addComponent<CLifespan>(90, m_currentFrame);
 }
 
@@ -156,6 +156,9 @@ void Scene_Play::sMovement()
         playerVelocity.y = m_playerConfig.JUMP;
         m_player->getComponent<CInput>().canJump = false;
         m_player->getComponent<CState>().state = "AIR";
+    }
+    if (!m_player->getComponent<CInput>().up && m_player->getComponent<CTransform>().velocity.y > 0) {
+        playerVelocity.y = 0;
     }
     if (m_player->getComponent<CInput>().left) {
         playerVelocity.x = -m_playerConfig.SPEED;
@@ -246,10 +249,10 @@ void Scene_Play::sCollision()
     }
 
 
-    // TODO: Implement player / tile collisions and resolutions
-    //       Update the CState component of the player to store whether
-    //       it is currently on the ground or in the air. This will be
-    //       used by the Animation system
+    // Implement player / tile collisions and resolutions
+    // Update the CState component of the player to store whether
+    // it is currently on the ground or in the air. This will be
+    // used by the Animation system
     for (auto t : m_entityManager.getEntities("tile")) {
         auto overlap = Physics::GetOverlap(m_player, t);
         auto ppos = m_player->getComponent<CTransform>().pos;
@@ -262,12 +265,16 @@ void Scene_Play::sCollision()
                 } else {
                     m_player->getComponent<CTransform>().pos.x -= overlap.x;
                 }
+                auto animation = t->getComponent<CAnimation>().animation.getName();
+                if (animation == "Flag" || animation == "Pole" || animation == "PoleTop") {
+                    m_player->destroy();
+                    spawnPlayer();
+                }
             }
             if (prevOverlap.x > 0) { // for vertical collisions
                 if (m_player->getComponent<CTransform>().pos.y > t->getComponent<CTransform>().pos.y) { // falling down
                     m_player->getComponent<CTransform>().pos.y += overlap.y;
                     m_player->getComponent<CState>().state = "GROUND"; // todo : when to switch to air
-                    m_player->getComponent<CInput>().canJump = true;
                 } else { // going  up
                     m_player->getComponent<CTransform>().pos.y -= overlap.y;
                     m_player->getComponent<CTransform>().velocity.y = 0;

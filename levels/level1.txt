@@ -88,8 +88,8 @@ Tile Ground 3104 32
 Tile Ground 3296 32
 Tile Block 3296 96
 Tile Block 3296 160
-Tile Block 3296 224
-Tile Block 3296 288
+Tile Brick 3296 224
+Tile Brick 3296 288
 Tile Block 3296 352
 Tile Block 3296 416
 Tile Question 3296 648
