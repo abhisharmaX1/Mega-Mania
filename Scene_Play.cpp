@@ -36,6 +36,14 @@ void Scene_Play::init(const std::string &levelPath)
     loadLevel(levelPath);
 }
 
+void Scene_Play::playMusic() {
+    if (!m_music.openFromFile("sounds/main_theme.ogg")) {
+        std::cout << "Can't load music" << std::endl;
+        exit(-1);
+    }
+    m_music.play();
+}
+
 Vec2 Scene_Play::gridToMidPixel(float gridX, float gridY, std::shared_ptr<Entity> entity) {
     // TODO
     return Vec2(0, 0);
@@ -105,6 +113,7 @@ void Scene_Play::spawnPlayer()
     m_player->addComponent<CGravity>(m_playerConfig.GRAVITY);
     m_player->addComponent<CInput>().canJump = false;
 
+    playMusic();
 
     // helps with state management(ground or air)
     auto e = m_entityManager.addEntity("box");
@@ -299,7 +308,6 @@ void Scene_Play::sCollision()
         if (m_player) {
             auto ppos = m_player->getComponent<CTransform>().pos;
             auto box = m_entityManager.getEntities("box")[0];
-            // box->getComponent<CTransform>().pos = Vec2(ppos.x, ppos.y - 1); 
             auto overlap = Physics::GetOverlap(box, t);
             if (overlap.x > 0 && overlap.y > 0) {
                 m_player->getComponent<CState>().state = "GROUND";
@@ -399,6 +407,7 @@ void Scene_Play::onEnd()
     //       use m_game->changeScene(correct params);
     m_hasEnded = true;
     m_game->changeScene("MENU", std::make_shared<Scene_Menu>(m_game), false);
+    m_music.stop();
 }
 
 void Scene_Play::sRender()

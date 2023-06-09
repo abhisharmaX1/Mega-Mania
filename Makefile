@@ -38,7 +38,7 @@ compile:
 
 
 link:
-	g++ main.o Vec2.o Entity.o EntityManager.o Action.o Physics.o Assets.o Animation.o Scene.o Scene_Menu.o Scene_Play.o GameEngine.o -o main -Lsrc/lib -lsfml-graphics -lsfml-window -lsfml-system
+	g++ main.o Vec2.o Entity.o EntityManager.o Action.o Physics.o Assets.o Animation.o Scene.o Scene_Menu.o Scene_Play.o GameEngine.o -o main -Lsrc/lib -lsfml-graphics -lsfml-window -lsfml-system -lsfml-audio
 
 run:
 	./main.exe

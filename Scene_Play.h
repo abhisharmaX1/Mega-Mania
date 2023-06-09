@@ -21,6 +21,7 @@ protected:
     bool m_drawTextures =                  true;
     bool m_drawCollision =                 false;
     bool m_drawGrid =                      false;
+    sf::Music m_music;
     const Vec2 m_gridSize =                { 64, 64 };
     sf::Text m_gridText;
 
@@ -34,6 +35,8 @@ protected:
 
     void explosion(std::shared_ptr<Entity> entity);
     void spawnCoin(std::shared_ptr<Entity> entity);
+
+    void playMusic();
 
     Vec2 gridToMidPixel(float gridX, float gridY, std::shared_ptr<Entity> entity);
 
